@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Device certificates made by csipaus/connect.py.
+csipaus/certs/
+
+# What test-servers/cactus makes: certificates, and the archives of runs.
+cactus/certs/
+cactus/results/

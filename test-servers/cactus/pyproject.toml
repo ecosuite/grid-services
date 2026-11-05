@@ -1,0 +1,19 @@
+[project]
+name = "test-cactus"
+version = "0.1.0"
+description = "Runs CACTUS, ANU's CSIP-AUS client test harness, against the grid-services worker"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # The test definitions hosted CACTUS sends the runner: those locked in
+    # the cactus-orchestrator of cactus-deploy's docker/versions.lock
+    # (release-195: orchestrator v2.5.6, definitions 1.18.2).
+    "cactus-test-definitions==1.18.2",
+    "pyyaml>=6",
+    "test-common[e2e]",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+test-common = { path = "../common", editable = true }

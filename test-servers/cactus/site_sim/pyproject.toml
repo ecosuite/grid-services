@@ -1,0 +1,18 @@
+[project]
+name = "site-sim"
+version = "0.1.0"
+description = "Stands in for ecosuite, SolarNode and SolarNetwork, and the site's plant, in each CACTUS run"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "aiohttp>=3.9,<4",
+    "cryptography>=43",
+    "psycopg[binary]>=3.2,<4",
+    "pynacl>=1.5,<2",
+    "test-common",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+test-common = { path = "../../common", editable = true }

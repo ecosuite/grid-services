@@ -1,0 +1,5 @@
+<DeviceCapability xmlns="urn:ieee:std:2030.5:ns" href="/dcap" pollRate="86400">
+  <TimeLink href="/tm"/>
+  <EndDeviceListLink href="/edev" all="1"/>
+  <MirrorUsagePointListLink href="/mup" all="0"/>
+</DeviceCapability>

@@ -1,0 +1,188 @@
+# One CACTUS test run: the worker and its database, and the CACTUS test stack
+# it is tested against, as the hosted CACTUS starts for each run
+# (cactus-orchestrator pod/manager.py), with the images of its CSIP-AUS v1.2
+# tests. run.py starts one as a project of its own for each test, so tests run
+# side by side, and removes it afterwards; nothing is kept between runs.
+#
+# Connections use https://cactus-proxy/envoy/dcap as their dcap_url. Postgres,
+# the runner and the site simulator's control API are published on ports
+# Docker picks, for run.py to find with `docker compose port`.
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: grid_services
+      POSTGRES_USER: grid_services
+      POSTGRES_PASSWORD: grid_services
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - "127.0.0.1::5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grid_services -d grid_services"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+
+  migrate:
+    image: ${GRID_SERVICES_IMAGE:-grid-services:latest}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GRID_SERVICES_DATABASE_URL: postgresql://grid_services:grid_services@db:5432/grid_services?sslmode=disable
+    command:
+      - dbmate
+      - --env=GRID_SERVICES_DATABASE_URL
+      - --migrations-dir=/app/db/migrations
+      - --no-dump-schema
+      - up
+
+  # The role ecosuite's API logs in as, with the grants of the root README's
+  # Deployment step 2 (db/ecosuite_api.sql); the site simulator uses it.
+  ecosuite-api-role:
+    image: postgres:17
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PGPASSWORD: grid_services
+    volumes:
+      - ./db/ecosuite_api.sql:/sql/ecosuite_api.sql:ro
+    command: ["psql", "--quiet", "--set=ON_ERROR_STOP=1", "--host=db", "--username=grid_services",
+              "--dbname=grid_services", "--file=/sql/ecosuite_api.sql"]
+
+  # ecosuite, SolarNode and SolarNetwork, and the site's plant (README, "The
+  # site simulator"). The worker reads datums from its SolarNetwork on
+  # site-sim:8090; tests drive it on 8091.
+  site-sim:
+    build:
+      context: ..
+      dockerfile: cactus/site_sim/Dockerfile
+    image: grid-services-site-sim:latest
+    # To read certs/device.key, which only its owner can: root is that owner
+    # under rootless Docker, and can read it anyway otherwise.
+    user: root
+    depends_on:
+      ecosuite-api-role:
+        condition: service_completed_successfully
+    environment:
+      SITE_SIM_DATABASE_URL: postgresql://ecosuite_api:ecosuite_api@db:5432/grid_services
+      SITE_SIM_WORKER_PUBLIC_KEY: 4tVVc3eYLH+j0lCc6w56DWvLLZ7qIwuecQJZFB21kmg=
+      SITE_SIM_LOG_LEVEL: ${SITE_SIM_LOG_LEVEL:-info}
+    volumes:
+      - ./certs:/certs:ro
+    ports:
+      - "127.0.0.1::8091"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health')"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+
+  worker:
+    image: ${GRID_SERVICES_IMAGE:-grid-services:latest}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      cactus-proxy:
+        condition: service_started
+    environment:
+      GRID_SERVICES_DATABASE_URL: postgresql://grid_services:grid_services@db:5432/grid_services
+      GRID_SERVICES_WORKER_ID: cactus-worker
+      # compose.yaml's development key pair, whose public key is
+      # 4tVVc3eYLH+j0lCc6w56DWvLLZ7qIwuecQJZFB21kmg=.
+      GRID_SERVICES_SECRET_KEY: vgAypZi//RzjQ+xOsbiwSzbiOVb5Xt6IfE/P6vtwvVo=
+      GRID_SERVICES_LOG_LEVEL: ${GRID_SERVICES_LOG_LEVEL:-debug}
+      GRID_SERVICES_CSIPAUS_PEN: ${GRID_SERVICES_CSIPAUS_PEN:-0}
+
+  cactus-db:
+    image: cactusimageregistry.azurecr.io/cactus-db:${CACTUS_IMAGE_TAG:-194-v12}
+    command: ["postgres", "-c", "hba_file=/etc/cactus/pg_hba.conf"]
+    volumes:
+      - ./db/pg_hba.conf:/etc/cactus/pg_hba.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U envoy -d envoy"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+
+  cactus-envoy:
+    image: cactusimageregistry.azurecr.io/cactus-envoy:${CACTUS_IMAGE_TAG:-194-v12}
+    depends_on:
+      cactus-db:
+        condition: service_healthy
+    environment: &cactus-envoy-environment
+      DATABASE_URL: postgresql+asyncpg://envoy:envoy@cactus-db/envoy
+      PORT: "8000"
+      HREF_PREFIX: /envoy
+      CERT_HEADER: ssl-client-cert
+      ALLOW_DEVICE_REGISTRATION: "True"
+      STATIC_REGISTRATION_PIN: "11111"
+      LOG_CONFIG: logconf.server.json
+      # The worker polls; it takes no notifications, so envoy sends none.
+      ENABLE_NOTIFICATIONS: "False"
+    volumes:
+      - shared:/shared
+
+  cactus-envoy-admin:
+    image: cactusimageregistry.azurecr.io/cactus-envoy:${CACTUS_IMAGE_TAG:-194-v12}
+    depends_on:
+      cactus-db:
+        condition: service_healthy
+    environment:
+      <<: *cactus-envoy-environment
+      APP_MODULE: envoy.admin.main:app
+      PORT: "8001"
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: password
+      LOG_CONFIG: logconf.admin.json
+    volumes:
+      - shared:/shared
+
+  # The test harness, which devices reach through cactus-proxy.
+  cactus-runner:
+    image: cactusimageregistry.azurecr.io/cactus-runner:${CACTUS_IMAGE_TAG:-194-v12}
+    depends_on:
+      cactus-envoy:
+        condition: service_started
+      cactus-envoy-admin:
+        condition: service_started
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8080"
+      SERVER_URL: http://cactus-envoy:8000
+      ENVOY_ADMIN_URL: http://cactus-envoy-admin:8001
+      DATABASE_URL: postgresql+psycopg://envoy:envoy@cactus-db/envoy
+      ENVOY_ADMIN_BASICAUTH_USERNAME: admin
+      ENVOY_ADMIN_BASICAUTH_PASSWORD: password
+      ENVOY_PROXY_PREFIX: /envoy
+    volumes:
+      - shared:/shared
+    ports:
+      - "127.0.0.1::8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+
+  # TLS in front of the runner, passing it the device's certificate, as the
+  # hosted CACTUS's nginx does. CACTUS_PROXY_CIPHERS defaults to the hosted
+  # list, which prefers AES-GCM; set it to
+  # ECDHE-ECDSA-AES128-CCM8:@SECLEVEL=0 for IEEE 2030.5's suite alone.
+  cactus-proxy:
+    image: nginx:1.29-alpine
+    depends_on:
+      cactus-runner:
+        condition: service_healthy
+    environment:
+      CACTUS_PROXY_CIPHERS: ${CACTUS_PROXY_CIPHERS:-ECDH+AESGCM:ECDH+CHACHA20:ECDH+AES256:ECDH+AES128:!aNULL:!aDH:!ECDH+3DES:!RSA+3DES:!MD5:!DSS:ECDHE-ECDSA-AES128-CCM8:@SECLEVEL=0}
+    volumes:
+      - ./proxy/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./certs:/certs:ro
+
+volumes:
+  # Envoy's and the runner's logs, which the run's archive includes.
+  shared:

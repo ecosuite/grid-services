@@ -1,0 +1,136 @@
+{
+  "test": "ALL-05",
+  "source": "20261009-181012/ALL-05/cactus.zip",
+  "exchanges": [
+    {
+      "method": "GET",
+      "path": "/envoy/dcap",
+      "status": 200,
+      "epoch": 1791523221.873,
+      "body": "000-GET-DCAP-dcap.xml"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/edev",
+      "status": 200,
+      "epoch": 1791523221.994,
+      "body": "001-GET-EDEV-edev.xml"
+    },
+    {
+      "method": "POST",
+      "path": "/envoy/edev",
+      "status": 201,
+      "epoch": 1791523222.005,
+      "location": "/envoy/edev/1"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/edev/1",
+      "status": 200,
+      "epoch": 1791523222.017,
+      "body": "003-Unmatched-edev_1.xml"
+    },
+    {
+      "method": "PUT",
+      "path": "/envoy/edev/1/cp",
+      "status": 201,
+      "epoch": 1791523222.024,
+      "location": "/envoy/edev/1/cp"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/edev/1/fsa",
+      "status": 200,
+      "epoch": 1791523222.037,
+      "body": "005-GET-FSA-edev_1_fsa.xml"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/edev/1/fsa/1/derp",
+      "status": 200,
+      "epoch": 1791523222.044,
+      "body": "006-Unmatched-edev_1_fsa_1_derp.xml"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/tm",
+      "status": 200,
+      "epoch": 1791523222.059,
+      "body": "007-GET-TM-tm.xml"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/edev/1/derp/1/dderc",
+      "status": 200,
+      "epoch": 1791523222.065,
+      "body": "008-Unmatched-edev_1_derp_1_dderc.xml"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/edev/1/derp/1/derc",
+      "status": 200,
+      "epoch": 1791523222.07,
+      "body": "009-Unmatched-edev_1_derp_1_derc.xml"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/edev/1/der",
+      "status": 200,
+      "epoch": 1791523222.085,
+      "body": "010-GET-DER-edev_1_der.xml"
+    },
+    {
+      "method": "PUT",
+      "path": "/envoy/edev/1/der/1/dercap",
+      "status": 204,
+      "epoch": 1791523222.095
+    },
+    {
+      "method": "PUT",
+      "path": "/envoy/edev/1/der/1/derg",
+      "status": 204,
+      "epoch": 1791523222.107
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/mup",
+      "status": 200,
+      "epoch": 1791523222.116,
+      "body": "013-Init-mup.xml"
+    },
+    {
+      "method": "POST",
+      "path": "/envoy/mup",
+      "status": 201,
+      "epoch": 1791523222.125,
+      "location": "/envoy/mup/2"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/mup/2",
+      "status": 200,
+      "epoch": 1791523222.138,
+      "body": "015-Init-mup_2.xml"
+    },
+    {
+      "method": "POST",
+      "path": "/envoy/mup",
+      "status": 201,
+      "epoch": 1791523222.145,
+      "location": "/envoy/mup/3"
+    },
+    {
+      "method": "GET",
+      "path": "/envoy/mup/3",
+      "status": 200,
+      "epoch": 1791523222.154,
+      "body": "017-Init-mup_3.xml"
+    },
+    {
+      "method": "PUT",
+      "path": "/envoy/edev/1/der/1/ders",
+      "status": 204,
+      "epoch": 1791523222.161
+    }
+  ]
+}

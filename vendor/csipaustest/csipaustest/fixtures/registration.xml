@@ -1,0 +1,4 @@
+<Registration xmlns="urn:ieee:std:2030.5:ns" href="/edev/3/rg" pollRate="86400">
+  <dateTimeRegistered>1789900000</dateTimeRegistered>
+  <pIN>111115</pIN>
+</Registration>

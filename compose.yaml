@@ -1,0 +1,152 @@
+# Local stack for the grid-services worker.
+#
+#   docker compose up --build                   Postgres, migrations, worker,
+#                                               test VTN, CSIP-AUS test server
+#   docker compose --profile test run --rm test  Test suites, with a
+#                                                disposable test database
+#   docker compose --profile e2e run --rm e2e    End-to-end suite against the
+#                                                worker and the test VTN
+#
+# Postgres is published on 127.0.0.1:5433 so the API or psql can reach it,
+# the test VTN on 127.0.0.1:8080 and the CSIP-AUS test server on
+# 127.0.0.1:8081. The migrate service runs the same dbmate command as a
+# Render deploy. CACTUS runs from test-servers/cactus, each test in a stack
+# of its own.
+
+name: grid-services
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: grid_services
+      POSTGRES_USER: grid_services
+      POSTGRES_PASSWORD: grid_services
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grid_services -d grid_services"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    build:
+      context: .
+      target: runtime
+    image: grid-services:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GRID_SERVICES_DATABASE_URL: postgresql://grid_services:grid_services@db:5432/grid_services?sslmode=disable
+    command:
+      - dbmate
+      - --env=GRID_SERVICES_DATABASE_URL
+      - --migrations-dir=/app/db/migrations
+      - --no-dump-schema
+      - up
+
+  worker:
+    build:
+      context: .
+      target: runtime
+    image: grid-services:latest
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      GRID_SERVICES_DATABASE_URL: postgresql://grid_services:grid_services@db:5432/grid_services
+      GRID_SERVICES_WORKER_ID: compose-worker
+      # Opens sealed client keys and SolarNetwork secrets. The default is
+      # the compose stack's own test pair, whose public key is
+      # 4tVVc3eYLH+j0lCc6w56DWvLLZ7qIwuecQJZFB21kmg=; anything sealed for
+      # it can be opened by anyone with this file, so it is for local use
+      # only. Generate a pair of your own with
+      # `docker compose run --rm worker grid-services keygen`.
+      GRID_SERVICES_SECRET_KEY: ${GRID_SERVICES_SECRET_KEY:-vgAypZi//RzjQ+xOsbiwSzbiOVb5Xt6IfE/P6vtwvVo=}
+      GRID_SERVICES_LOG_LEVEL: ${GRID_SERVICES_LOG_LEVEL:-info}
+      GRID_SERVICES_CSIPAUS_PEN: ${GRID_SERVICES_CSIPAUS_PEN:-}
+    restart: unless-stopped
+
+  # An OpenADR 2.0b VTN to point connections at, with a control API and page
+  # on http://127.0.0.1:8080. Connections use
+  # http://test-vtn:8080/v/<ven name> as their VTN URL. It requests every
+  # offered report once a minute, as a utility would; the end-to-end suite
+  # sets TEST_VTN_REPORT_SECONDS lower so its waits stay short.
+  test-vtn:
+    build:
+      context: test-servers
+      dockerfile: openadr2b/Dockerfile
+    image: grid-services-test-vtn:latest
+    environment:
+      TEST_VTN_POLL_SECONDS: ${TEST_VTN_POLL_SECONDS:-2}
+      TEST_VTN_REPORT_SECONDS: ${TEST_VTN_REPORT_SECONDS:-60}
+      TEST_VTN_LOG_LEVEL: ${TEST_VTN_LOG_LEVEL:-info}
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  # A CSIP-AUS utility server to point csipaus connections at, with a
+  # control API and page on http://127.0.0.1:8081. Connections use
+  # http://test-csipaus:8080/d/<client name>/dcap as their dcap_url.
+  test-csipaus:
+    build:
+      context: test-servers
+      dockerfile: csipaus/Dockerfile
+    image: grid-services-test-csipaus:latest
+    environment:
+      TEST_CSIPAUS_POLL_SECONDS: ${TEST_CSIPAUS_POLL_SECONDS:-5}
+      TEST_CSIPAUS_LOG_LEVEL: ${TEST_CSIPAUS_LOG_LEVEL:-info}
+    ports:
+      - "127.0.0.1:8081:8080"
+
+  # Drives the worker through the database, as the API does, and the test
+  # VTN through its control API, as a utility does. Each test creates its
+  # own connections and deletes them afterwards.
+  e2e:
+    profiles: ["e2e"]
+    image: grid-services-test-vtn:latest
+    depends_on:
+      worker:
+        condition: service_started
+      test-vtn:
+        condition: service_healthy
+    environment:
+      E2E_DATABASE_URL: postgresql://grid_services:grid_services@db:5432/grid_services
+      E2E_VTN_URL: http://test-vtn:8080
+      E2E_VTN_CONTROL_URL: http://test-vtn:8080
+      # The worker's public key, to seal SolarNetwork secrets for it.
+      E2E_WORKER_PUBLIC_KEY: ${GRID_SERVICES_PUBLIC_KEY:-4tVVc3eYLH+j0lCc6w56DWvLLZ7qIwuecQJZFB21kmg=}
+    command: ["pytest"]
+
+  # Throwaway database for the integration tests, which drop and recreate
+  # its schema. Never point the tests at a real database.
+  test-db:
+    profiles: ["test"]
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+    image: grid-services-test:latest
+    depends_on:
+      test-db:
+        condition: service_healthy
+    environment:
+      GRID_SERVICES_TEST_DATABASE_URL: postgresql://postgres:test@test-db:5432/postgres
+
+volumes:
+  pgdata:

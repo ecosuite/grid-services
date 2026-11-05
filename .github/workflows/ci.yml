@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    # The branches Render deploys from; deploys wait for this check.
+    branches: [master, stage]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # The runtime build covers the deps and build stages. It compiles with
+      # warnings as errors and fails if the binary has a missing library.
+      - name: Build runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          tags: grid-services:latest
+          load: true
+          cache-from: type=gha,scope=grid-services
+          cache-to: type=gha,mode=max,scope=grid-services
+
+      - name: Build test image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: test
+          tags: grid-services-test:latest
+          load: true
+          cache-from: type=gha,scope=grid-services
+
+      # The same dbmate command a Render deploy runs, against a fresh
+      # Postgres, then again to check it is a no-op.
+      - name: Apply migrations with dbmate
+        run: |
+          docker compose run --rm migrate
+          docker compose run --rm migrate
+          docker compose down --volumes
+
+      # Runs liboadr's suite, the CSIP-AUS bindings' suite, and the worker's
+      # unit and Postgres integration tests against the disposable test
+      # database from compose.yaml.
+      - name: Run tests
+        run: docker compose --profile test run --rm test
+
+      - name: Stop test database
+        if: always()
+        run: docker compose --profile test down --volumes
+
+      - name: Build test VTN image
+        uses: docker/build-push-action@v6
+        with:
+          context: test-servers
+          file: test-servers/openadr2b/Dockerfile
+          tags: grid-services-test-vtn:latest
+          load: true
+          cache-from: type=gha,scope=test-vtn
+          cache-to: type=gha,mode=max,scope=test-vtn
+
+      - name: Build CSIP-AUS test server image
+        uses: docker/build-push-action@v6
+        with:
+          context: test-servers
+          file: test-servers/csipaus/Dockerfile
+          tags: grid-services-test-csipaus:latest
+          load: true
+          cache-from: type=gha,scope=test-csipaus
+          cache-to: type=gha,mode=max,scope=test-csipaus
+
+      # The server's own tests, with a scripted client. IEEE's sep.xsd cannot
+      # be redistributed, so its documents are checked against the schema
+      # only where a developer has it.
+      - name: Test CSIP-AUS test server
+        run: docker run --rm grid-services-test-csipaus:latest pytest
+
+      # The worker, migrated from scratch, against the test VTN: registration,
+      # events, opt answers and reports, driven through the database and the
+      # VTN's control API.
+      - name: Run end-to-end tests
+        run: docker compose --profile e2e run --rm e2e
+        env:
+          TEST_VTN_REPORT_SECONDS: 5
+
+      - name: Show worker and test VTN logs
+        if: failure()
+        run: docker compose logs --no-color worker test-vtn
+
+      - name: Stop end-to-end stack
+        if: always()
+        run: docker compose --profile e2e down --volumes

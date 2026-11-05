@@ -1,0 +1,13 @@
+<EndDeviceList xmlns="urn:ieee:std:2030.5:ns" xmlns:csipaus="https://csipaus.org/ns" href="/edev" subscribable="1" all="1" results="1" pollRate="300">
+  <EndDevice href="/edev/3" subscribable="0">
+    <DERListLink href="/edev/3/der" all="1"/>
+    <lFDI>3E4F45AB31EDFE5B67E343E5E4562E31984E23E5</lFDI>
+    <sFDI>167261211391</sFDI>
+    <changedTime>1790000000</changedTime>
+    <enabled>true</enabled>
+    <FunctionSetAssignmentsListLink href="/edev/3/fsa" all="1"/>
+    <postRate>300</postRate>
+    <RegistrationLink href="/edev/3/rg"/>
+    <csipaus:ConnectionPointLink href="/edev/3/cp"/>
+  </EndDevice>
+</EndDeviceList>

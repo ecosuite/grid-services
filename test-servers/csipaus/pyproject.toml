@@ -1,0 +1,33 @@
+[project]
+name = "test-csipaus"
+version = "0.1.0"
+description = "A minimal CSIP-AUS (IEEE 2030.5) utility server with a control API, for trying grid-services against by hand"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # 1.x speaks CSIP-AUS v1.1a and v1.2 (namespace https://csipaus.org/ns),
+    # as the worker's bindings do; 2.x is v1.3.
+    "envoy-schema>=1.5.1,<2",
+    "aiohttp>=3.9,<4",
+    "tzdata",
+    "test-common",
+]
+
+[dependency-groups]
+test = [
+    "test-common[e2e]",
+    "pytest-aiohttp>=1.0,<2",
+]
+
+[tool.uv]
+default-groups = ["test"]
+package = false
+
+[tool.uv.sources]
+test-common = { path = "../common", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra -p no:cacheprovider"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

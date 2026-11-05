@@ -1,0 +1,17 @@
+<DefaultDERControl xmlns="urn:ieee:std:2030.5:ns" xmlns:csipaus="https://csipaus.org/ns" href="/derp/1/dderc" subscribable="0">
+  <mRID>D1000000000000000000000000000001</mRID>
+  <description>Failsafe limits</description>
+  <DERControlBase>
+    <opModEnergize>true</opModEnergize>
+    <csipaus:opModImpLimW>
+      <multiplier>0</multiplier>
+      <value>15000</value>
+    </csipaus:opModImpLimW>
+    <csipaus:opModExpLimW>
+      <multiplier>0</multiplier>
+      <value>1500</value>
+    </csipaus:opModExpLimW>
+  </DERControlBase>
+  <setGradW>27</setGradW>
+  <setSoftGradW>16</setSoftGradW>
+</DefaultDERControl>

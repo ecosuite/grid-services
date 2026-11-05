@@ -1,0 +1,54 @@
+<DERControlList xmlns="urn:ieee:std:2030.5:ns" xmlns:csipaus="https://csipaus.org/ns" href="/derp/1/derc" subscribable="0" all="2" results="2">
+  <DERControl href="/derp/1/derc/7" replyTo="/rsps/1/rsp" responseRequired="03" subscribable="0">
+    <mRID>C1000000000000000000000000000007</mRID>
+    <description>Export limit</description>
+    <creationTime>1789990000</creationTime>
+    <EventStatus>
+      <currentStatus>1</currentStatus>
+      <dateTime>1790000000</dateTime>
+      <potentiallySuperseded>false</potentiallySuperseded>
+    </EventStatus>
+    <interval>
+      <duration>1800</duration>
+      <start>1790000000</start>
+    </interval>
+    <DERControlBase>
+      <csipaus:opModImpLimW>
+        <multiplier>3</multiplier>
+        <value>10</value>
+      </csipaus:opModImpLimW>
+      <csipaus:opModExpLimW>
+        <multiplier>0</multiplier>
+        <value>1500</value>
+      </csipaus:opModExpLimW>
+      <csipaus:opModGenLimW>
+        <multiplier>0</multiplier>
+        <value>5000</value>
+      </csipaus:opModGenLimW>
+      <csipaus:opModLoadLimW>
+        <multiplier>0</multiplier>
+        <value>7000</value>
+      </csipaus:opModLoadLimW>
+    </DERControlBase>
+  </DERControl>
+  <DERControl href="/derp/1/derc/8" replyTo="/rsps/1/rsp" responseRequired="03" subscribable="0">
+    <mRID>C1000000000000000000000000000008</mRID>
+    <description>Disconnect</description>
+    <creationTime>1789990000</creationTime>
+    <EventStatus>
+      <currentStatus>0</currentStatus>
+      <dateTime>1789990000</dateTime>
+      <potentiallySuperseded>true</potentiallySuperseded>
+      <potentiallySupersededTime>1789995000</potentiallySupersededTime>
+    </EventStatus>
+    <interval>
+      <duration>600</duration>
+      <start>1790003600</start>
+    </interval>
+    <randomizeStart>60</randomizeStart>
+    <DERControlBase>
+      <opModConnect>false</opModConnect>
+      <opModEnergize>false</opModEnergize>
+    </DERControlBase>
+  </DERControl>
+</DERControlList>

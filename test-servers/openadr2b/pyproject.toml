@@ -1,0 +1,26 @@
+[project]
+name = "test-vtn"
+version = "0.1.0"
+description = "An OpenADR 2.0b test VTN with a control API, and the grid-services end-to-end tests that drive it"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "openleadr==0.5.36",
+    "aiohttp>=3.9,<4",
+    "test-common",
+]
+
+[dependency-groups]
+e2e = [
+    "test-common[e2e]",
+]
+
+[tool.uv]
+default-groups = ["e2e"]
+package = false
+
+[tool.uv.sources]
+test-common = { path = "../common", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["e2e"]
+addopts = "-ra -p no:cacheprovider"

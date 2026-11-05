@@ -1,0 +1,39 @@
+# The device-facing side of a CACTUS test stack, as the hosted CACTUS has it
+# (cactus-deploy server/nginx-config.sh): TLS 1.2 with the device's
+# certificate, which is passed to the runner, and through it to envoy, in the
+# ssl-client-cert header. Envoy knows the device by that certificate's LFDI.
+#
+# Unlike the hosted proxy, it accepts any client certificate
+# (optional_no_ca): ours are self-signed, so there is no SERCA to check
+# them against.
+
+server {
+    listen 443 ssl;
+    server_name _;
+
+    ssl_certificate     /certs/proxy.pem;
+    ssl_certificate_key /certs/proxy.key;
+
+    ssl_protocols TLSv1.2;
+    ssl_ciphers ${CACTUS_PROXY_CIPHERS};
+    ssl_prefer_server_ciphers on;
+
+    ssl_verify_client optional_no_ca;
+
+    location / {
+        return 404;
+    }
+
+    location ~ ^(/envoy|/\.well-known)(/.*)?$ {
+        proxy_pass http://cactus-runner:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header ssl-client-cert   $ssl_client_escaped_cert;
+        proxy_set_header X-Request-Start   "t=$msec";
+        proxy_read_timeout 300;
+        proxy_send_timeout 300;
+    }
+}

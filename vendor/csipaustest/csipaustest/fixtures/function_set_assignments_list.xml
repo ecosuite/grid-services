@@ -1,0 +1,8 @@
+<FunctionSetAssignmentsList xmlns="urn:ieee:std:2030.5:ns" href="/edev/3/fsa" subscribable="0" all="1" results="1" pollRate="3600">
+  <FunctionSetAssignments href="/edev/3/fsa/1" subscribable="0">
+    <DERProgramListLink href="/edev/3/fsa/1/derp" all="1"/>
+    <TimeLink href="/tm"/>
+    <mRID>A1000000000000000000000000000001</mRID>
+    <description>Dynamic connections</description>
+  </FunctionSetAssignments>
+</FunctionSetAssignmentsList>

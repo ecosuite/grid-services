@@ -1,0 +1,12 @@
+build/
+build-*/
+cmake-build-*/
+.git/
+.idea/
+.vscode/
+*.o
+*.so
+logs/
+test-servers/
+specs/
+docs/

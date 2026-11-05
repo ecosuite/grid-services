@@ -1,0 +1,161 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+#
+# The grid-services worker and its own database. Deliberately separate from
+# Ecosuite's own project and database so the two can evolve independently;
+# the ecosuite API connects to this database as a client
+# (see README, "Deployment").
+
+version: "1"
+
+projects:
+  - name: grid-services
+    environments:
+      - name: Production
+        services:
+          # One virtual VEN per site connection. No inbound ports: the API talks
+          # to it only through the database.
+          - type: worker
+            name: grid-services-worker
+            runtime: docker
+            repo: https://github.com/ecosuite/grid-services
+            branch: master
+            plan: starter
+            region: oregon
+            dockerContext: .
+            dockerfilePath: ./Dockerfile
+            # Deploy only after CI passes on the commit.
+            autoDeployTrigger: checksPass
+            # The test VTN is deployed separately.
+            buildFilter:
+              ignoredPaths:
+                - test-servers/**
+            # Runs in the new image before it replaces the old one; a failed
+            # migration stops the deploy. dbmate requires TLS unless the URL
+            # says otherwise.
+            preDeployCommand: dbmate --env=GRID_SERVICES_DATABASE_URL --migrations-dir=/app/db/migrations --no-dump-schema up
+            envVars:
+              - key: GRID_SERVICES_DATABASE_URL
+                fromDatabase:
+                  name: grid-services-db
+                  property: connectionString
+              # Opens sealed client keys. Paste in the dashboard; generate with
+              # `grid-services keygen` and give the public key to the API.
+              - key: GRID_SERVICES_SECRET_KEY
+                sync: false
+              - key: GRID_SERVICES_WORKER_ID
+                value: production
+              - key: GRID_SERVICES_LOG_LEVEL
+                value: info
+
+        databases:
+          # Each enabled connection holds one session, plus one for the
+          # supervisor and whatever the API uses.
+          - name: grid-services-db
+            databaseName: grid_services
+            user: grid_services
+            plan: basic-256mb
+            diskSizeGB: 10
+            region: oregon
+            # Internal network only; the ecosuite API reaches it from the same
+            # workspace and region.
+            ipAllowList: []
+            postgresMajorVersion: "17"
+
+      - name: Test
+        services:
+          - type: worker
+            name: grid-services-worker-test
+            runtime: docker
+            repo: https://github.com/ecosuite/grid-services
+            branch: stage
+            plan: starter
+            region: oregon
+            dockerContext: .
+            dockerfilePath: ./Dockerfile
+            autoDeployTrigger: checksPass
+            buildFilter:
+              ignoredPaths:
+                - test-servers/**
+            preDeployCommand: dbmate --env=GRID_SERVICES_DATABASE_URL --migrations-dir=/app/db/migrations --no-dump-schema up
+            envVars:
+              - key: GRID_SERVICES_DATABASE_URL
+                fromDatabase:
+                  name: grid-services-db-test
+                  property: connectionString
+              - key: GRID_SERVICES_SECRET_KEY
+                sync: false
+              - key: GRID_SERVICES_WORKER_ID
+                value: test
+              - key: GRID_SERVICES_LOG_LEVEL
+                value: debug
+
+          # An OpenADR 2.0b VTN for testing, in this environment only. API
+          # users point Test connections at https://<its host>/v/<ven name>
+          # and send events from its page. State is in memory; a restart asks
+          # VENs to register again. See test-servers/openadr2b/README.md.
+          - type: web
+            name: grid-services-test-vtn
+            runtime: docker
+            repo: https://github.com/ecosuite/grid-services
+            branch: stage
+            plan: starter
+            region: oregon
+            dockerContext: ./test-servers
+            dockerfilePath: ./test-servers/openadr2b/Dockerfile
+            autoDeployTrigger: checksPass
+            buildFilter:
+              paths:
+                - test-servers/common/**
+                - test-servers/openadr2b/**
+            healthCheckPath: /healthz
+            envVars:
+              # Protects the control API; the page asks for it. Read it from
+              # the dashboard.
+              - key: TEST_VTN_CONTROL_TOKEN
+                generateValue: true
+              - key: TEST_VTN_POLL_SECONDS
+                value: "5"
+              - key: TEST_VTN_REPORT_SECONDS
+                value: "30"
+              - key: TEST_VTN_LOG_LEVEL
+                value: info
+
+          # A CSIP-AUS utility server for testing, in this environment only.
+          # API users point Test csipaus connections at
+          # https://<its host>/d/<client name>/dcap and send controls from its
+          # page. State is in memory; a restart forgets every end device. See
+          # test-servers/csipaus/README.md.
+          - type: web
+            name: grid-services-test-csipaus
+            runtime: docker
+            repo: https://github.com/ecosuite/grid-services
+            branch: stage
+            plan: starter
+            region: oregon
+            dockerContext: ./test-servers
+            dockerfilePath: ./test-servers/csipaus/Dockerfile
+            autoDeployTrigger: checksPass
+            buildFilter:
+              paths:
+                - test-servers/common/**
+                - test-servers/csipaus/**
+            healthCheckPath: /healthz
+            envVars:
+              # Protects the control API; the page asks for it. Read it from
+              # the dashboard.
+              - key: TEST_CSIPAUS_CONTROL_TOKEN
+                generateValue: true
+              - key: TEST_CSIPAUS_POLL_SECONDS
+                value: "10"
+              - key: TEST_CSIPAUS_LOG_LEVEL
+                value: info
+
+        databases:
+          - name: grid-services-db-test
+            databaseName: grid_services_test
+            user: grid_services
+            plan: basic-256mb
+            diskSizeGB: 5
+            region: oregon
+            ipAllowList: []
+            postgresMajorVersion: "17"

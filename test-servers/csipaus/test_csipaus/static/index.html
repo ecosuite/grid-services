@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test CSIP-AUS server</title>
+<style>
+  :root {
+    --bg: #fafaf9; --panel: #ffffff; --text: #1c1917; --muted: #78716c;
+    --line: #e7e5e4; --accent: #0f766e; --danger: #b91c1c; --ok: #15803d;
+    font-family: system-ui, sans-serif; font-size: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1917; --panel: #292524; --text: #f5f5f4; --muted: #a8a29e;
+      --line: #44403c; --accent: #2dd4bf; --danger: #f87171; --ok: #4ade80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+           justify-content: space-between; padding: 12px 16px;
+           border-bottom: 1px solid var(--line); }
+  h1 { font-size: 16px; margin: 0; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { height: 22px; width: auto; display: block; }
+  h2 { font-size: 14px; margin: 0 0 8px; }
+  main { display: grid; grid-template-columns: 260px 1fr; gap: 16px; padding: 16px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line);
+            border-radius: 6px; padding: 12px; margin-bottom: 16px; overflow-x: auto; }
+  .muted { color: var(--muted); }
+  .error { color: var(--danger); }
+  .ok { color: var(--ok); }
+  ul.pick { list-style: none; margin: 0; padding: 0; }
+  ul.pick li { padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+  ul.pick li.selected, ul.pick li:hover { background: var(--line); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line);
+           vertical-align: top; white-space: nowrap; }
+  td.wrap { white-space: normal; }
+  input, select, button { font: inherit; color: inherit; background: var(--bg);
+                          border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+  button.danger { color: var(--danger); }
+  form.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+              gap: 8px; align-items: end; }
+  label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); }
+  label.check { flex-direction: row; align-items: center; gap: 6px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  code { font-size: 12px; }
+  dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0; }
+  dl.kv dt { color: var(--muted); }
+  dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+  .columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  h3 { font-size: 13px; margin: 0 0 4px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg class="logo" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ecosuite" viewBox="0 0 264 38" fill="none"><path d="M71.8129 8.96701V13.1886H52.6789V17.5928H69.9976V21.723H52.6789V26.0359H71.8129V30.2879H48.1406V8.96701H71.8129Z" fill="currentColor"></path><path d="M98.8622 14.9125C97.5464 13.5601 95.7311 13.1885 93.3005 13.1885H85.1925C80.977 13.1885 78.6074 15.5887 78.6074 19.597V19.6275C78.6378 23.6906 81.0075 26.0664 85.1925 26.0664H93.3005C95.8164 26.0664 97.5708 25.6339 98.8622 24.312L101.555 27.7903C99.5628 29.7275 97.0774 30.4707 93.3066 30.4707H85.1986C78.1505 30.4707 74.0508 26.3771 74.0508 19.6275V19.597C74.0508 12.8839 78.1444 8.78424 85.1986 8.78424H93.3066C96.9616 8.78424 99.5384 9.46042 101.555 11.4646L98.8622 14.9125Z" fill="currentColor"></path><path d="M122.574 8.78424C129.622 8.78424 133.721 12.8779 133.721 19.597V19.6275C133.721 26.371 129.628 30.4707 122.574 30.4707H113.765C106.717 30.4707 102.617 26.3771 102.617 19.6275V19.597C102.617 12.8839 106.711 8.78424 113.765 8.78424H122.574ZM122.574 26.0603C126.935 26.0603 129.159 23.6297 129.159 19.6214V19.5909C129.159 15.6191 126.935 13.1824 122.574 13.1824H113.765C109.403 13.1824 107.18 15.613 107.18 19.5909V19.6214C107.18 23.6236 109.403 26.0603 113.765 26.0603H122.574Z" fill="currentColor"></path><path d="M157.515 15.1927C156.699 13.5906 155.377 12.9144 152.983 12.9144H143.736C141.628 12.9144 140.458 13.6211 140.458 14.9186C140.458 15.9968 141.159 16.7035 143.413 17.0141L155.115 17.8182C159.885 18.3726 161.377 21.1138 161.347 24.1962C161.347 27.833 158.892 30.4768 153.708 30.4768H144.259C139.551 30.4768 136.596 28.7833 135.512 25.7923L139.581 23.4226C140.373 25.6095 141.865 26.3771 144.29 26.3771H153.769C155.962 26.3771 157.046 25.6095 157.046 24.1597C157.046 22.7099 156.138 22.186 154.207 21.9119L142.213 20.9859C137.705 20.4316 136.157 17.9035 136.157 15.0404C136.157 11.3428 138.643 8.79034 143.967 8.79034H153.068C157.223 8.79034 159.915 10.2097 161.054 12.6403L157.515 15.1988V15.1927Z" fill="currentColor"></path><path d="M187.197 8.96701H191.882V20.1453C191.882 27.169 187.934 30.4646 181.434 30.4646H174.502C168.008 30.4646 164.055 27.169 164.055 20.1453V8.96701H168.739V20.1453C168.739 24.3059 171.078 25.9994 174.502 25.9994H181.434C184.827 25.9994 187.197 24.3059 187.197 20.1453V8.96701Z" fill="currentColor"></path><path d="M196.043 30.2818V8.96701H200.697V30.2818H196.043Z" fill="currentColor"></path><path d="M228.687 8.96701V13.4931H218.331V30.2818H213.653V13.4931H203.297V8.96701H228.693H228.687Z" fill="currentColor"></path><path d="M255.032 8.96701V13.1886H235.898V17.5928H253.216V21.723H235.898V26.0359H255.032V30.2879H231.359V8.96701H255.032Z" fill="currentColor"></path><path d="M261.749 0.383777C262.187 0.639628 262.534 0.986854 262.784 1.43764C263.034 1.88843 263.162 2.38794 263.162 2.94229C263.162 3.49663 263.034 4.00224 262.784 4.45303C262.534 4.90381 262.187 5.25713 261.749 5.51298C261.31 5.76883 260.81 5.89676 260.25 5.89676C259.69 5.89676 259.178 5.76883 258.739 5.51298C258.295 5.25713 257.953 4.90381 257.704 4.45303C257.454 4.00224 257.332 3.49663 257.332 2.94229C257.332 2.38794 257.454 1.88233 257.704 1.43764C257.953 0.992946 258.301 0.639628 258.739 0.383777C259.178 0.127926 259.683 0 260.25 0C260.816 0 261.304 0.127926 261.749 0.383777ZM261.931 4.65405C262.358 4.21545 262.571 3.64283 262.571 2.94229C262.571 2.24174 262.358 1.66912 261.931 1.23052C261.505 0.79192 260.944 0.566528 260.256 0.566528C259.568 0.566528 258.995 0.785829 258.581 1.23052C258.161 1.66912 257.953 2.24174 257.953 2.94229C257.953 3.64283 258.161 4.21545 258.581 4.65405C259.001 5.09266 259.556 5.31805 260.256 5.31805C260.957 5.31805 261.505 5.09875 261.931 4.65405ZM261.371 2.91792C261.249 3.07631 261.085 3.19205 260.877 3.25906L261.682 4.45303L260.774 4.46521L260.085 3.31388H259.842V4.46521H259.093V1.37063H260.475C260.804 1.37063 261.066 1.45591 261.261 1.63257C261.456 1.80923 261.554 2.04072 261.554 2.33921C261.554 2.57069 261.493 2.76563 261.371 2.92401V2.91792ZM259.836 2.69253H260.427C260.53 2.69253 260.622 2.66207 260.695 2.60725C260.768 2.55242 260.804 2.46714 260.804 2.36358C260.804 2.26002 260.768 2.18083 260.695 2.126C260.622 2.07118 260.536 2.04681 260.427 2.04681H259.836V2.69253Z" fill="currentColor"></path><path d="M0 13.353C1.01731 13.1277 1.91888 12.5916 2.60725 11.8545L10.362 16.3319V22.1982L2.60725 26.6756C1.91888 25.9385 1.01731 25.4085 0 25.177L0 13.353Z" fill="#0075FF"></path><path d="M35.5338 25.177C34.5165 25.4024 33.615 25.9385 32.9266 26.6756L25.1719 22.1982V16.3319L32.9266 11.8545C33.615 12.5916 34.5165 13.1216 35.5338 13.353V25.177Z" fill="#0075FF"></path><path d="M31.7649 9.83811L24.0102 14.3155L18.9297 11.3854V2.4367C20.1115 2.15648 21.1288 1.47421 21.8354 0.529999L31.9111 6.51813C31.6796 7.09685 31.5517 7.72429 31.5517 8.38219C31.5517 8.8878 31.6248 9.36905 31.7649 9.83202V9.83811Z" fill="#0075FF"></path><path d="M16.6025 2.43668V11.3854L11.522 14.3155L3.76729 9.83809C3.90131 9.37512 3.9805 8.89388 3.9805 8.38827C3.9805 7.73036 3.85258 7.10292 3.62109 6.52421L13.6968 0.536072C14.4034 1.47419 15.4207 2.16255 16.6025 2.44277V2.43668Z" fill="#0075FF"></path><path d="M3.7712 28.6919L11.5259 24.2145L16.6064 27.1446V36.0933C15.4246 36.3735 14.4073 37.0558 13.7007 38L3.625 32.0118C3.85648 31.4331 3.98441 30.8057 3.98441 30.1478C3.98441 29.6422 3.90522 29.1548 3.7712 28.698V28.6919Z" fill="#0075FF"></path><path d="M18.9336 36.0933V27.1446L24.0141 24.2145L31.7688 28.6919C31.6348 29.1548 31.5556 29.6361 31.5556 30.1417C31.5556 30.7996 31.6835 31.427 31.915 32.0058L21.8393 37.9939C21.1327 37.0558 20.1154 36.3674 18.9336 36.0872V36.0933Z" fill="#0075FF"></path></svg>
+    <h1>Test CSIP-AUS server <span id="server" class="muted"></span></h1>
+  </div>
+  <label class="check">Control token
+    <input id="token" type="password" autocomplete="off" size="24">
+  </label>
+</header>
+<main>
+  <div>
+    <section>
+      <h2>Clients</h2>
+      <ul class="pick" id="clients"></ul>
+      <p class="muted" id="no-clients">No client has called yet. Point a connection's server URL at
+        <code id="dcap-url"></code>.</p>
+    </section>
+    <section id="devices-section" hidden>
+      <h2>End devices</h2>
+      <ul class="pick" id="devices"></ul>
+      <p class="muted" id="no-devices">This client has not registered an end device.</p>
+    </section>
+  </div>
+  <div id="detail" hidden>
+    <section>
+      <h2 id="device-title"></h2>
+      <div class="columns">
+        <dl class="kv" id="device-facts"></dl>
+        <form class="grid" id="device-form">
+          <label>Registration PIN<input name="pin" type="number" min="0" max="999999"></label>
+          <label>Program primacy<input name="primacy" type="number" min="0" max="255"></label>
+          <div class="actions">
+            <button type="submit">Save</button>
+            <button type="button" class="danger" id="forget">Forget end device</button>
+          </div>
+        </form>
+      </div>
+    </section>
+    <section>
+      <h2>Default control</h2>
+      <p id="default-now"></p>
+      <form class="grid" id="default-form">
+        <label>Export limit (W)<input name="opModExpLimW" type="number" min="0"></label>
+        <label>Import limit (W)<input name="opModImpLimW" type="number" min="0"></label>
+        <label>Generation limit (W)<input name="opModGenLimW" type="number" min="0"></label>
+        <label>Load limit (W)<input name="opModLoadLimW" type="number" min="0"></label>
+        <label>Connect<select name="opModConnect"><option value="">unset</option>
+          <option value="true">true</option><option value="false">false</option></select></label>
+        <label>Energize<select name="opModEnergize"><option value="">unset</option>
+          <option value="true">true</option><option value="false">false</option></select></label>
+        <div class="actions">
+          <button class="primary" type="submit">Set default</button>
+          <button type="button" class="danger" id="clear-default">Clear</button>
+        </div>
+      </form>
+      <p id="default-error" class="error"></p>
+    </section>
+    <section>
+      <h2>New control</h2>
+      <form class="grid" id="control-form">
+        <label>Starts in (seconds)<input name="start_in_seconds" type="number" value="60"></label>
+        <label>Duration (seconds)<input name="duration_seconds" type="number" min="1" value="300"></label>
+        <label>Export limit (W)<input name="opModExpLimW" type="number" min="0"></label>
+        <label>Import limit (W)<input name="opModImpLimW" type="number" min="0"></label>
+        <label>Generation limit (W)<input name="opModGenLimW" type="number" min="0"></label>
+        <label>Load limit (W)<input name="opModLoadLimW" type="number" min="0"></label>
+        <label>Connect<select name="opModConnect"><option value="">unset</option>
+          <option value="true">true</option><option value="false">false</option></select></label>
+        <label>Energize<select name="opModEnergize"><option value="">unset</option>
+          <option value="true">true</option><option value="false">false</option></select></label>
+        <label>Randomize start (seconds)<input name="randomize_start_seconds" type="number"></label>
+        <label>Description<input name="description"></label>
+        <div class="actions"><button class="primary" type="submit">Send control</button></div>
+      </form>
+      <p id="control-error" class="error"></p>
+    </section>
+    <section>
+      <h2>Controls</h2>
+      <table>
+        <thead><tr><th>#</th><th>Status</th><th>Start</th><th>Length</th><th>Sets</th>
+          <th>Client's responses</th><th></th></tr></thead>
+        <tbody id="controls"></tbody>
+      </table>
+    </section>
+    <section>
+      <h2>DER</h2>
+      <div class="columns" id="der"></div>
+    </section>
+    <section>
+      <h2>Readings</h2>
+      <div id="readings"></div>
+    </section>
+  </div>
+  <div id="messages-section" hidden style="grid-column: 1 / -1">
+    <section>
+      <h2>Exchanges</h2>
+      <table>
+        <thead><tr><th>#</th><th>Time</th><th>Request</th><th>Status</th><th>Sent</th>
+          <th>Answered</th></tr></thead>
+        <tbody id="messages"></tbody>
+      </table>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (value) => String(value ?? "").replace(/[&<>"']/g,
+  (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const time = (iso) => iso ? new Date(iso).toLocaleTimeString() : "";
+const stamp = (iso) => iso ? new Date(iso).toLocaleString() : "";
+const epochStamp = (seconds) => seconds ? new Date(seconds * 1000).toLocaleString() : "";
+const LIMITS = {opModExpLimW: "export", opModImpLimW: "import", opModGenLimW: "generation",
+                opModLoadLimW: "load"};
+const SWITCHES = {opModConnect: "connect", opModEnergize: "energize"};
+
+let selectedClient = null;
+let selectedDevice = null;
+
+function storedToken() {
+  try { return localStorage.getItem("test-csipaus-token") || ""; } catch { return ""; }
+}
+$("token").value = storedToken();
+$("token").addEventListener("change", () => {
+  try { localStorage.setItem("test-csipaus-token", $("token").value); } catch {}
+  refresh();
+});
+
+async function api(method, path, body) {
+  const headers = {"Content-Type": "application/json"};
+  if ($("token").value) headers.Authorization = `Bearer ${$("token").value}`;
+  const response = await fetch(`api${path}`, {method, headers,
+    body: body === undefined ? undefined : JSON.stringify(body)});
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) throw new Error(data?.error || response.statusText);
+  return data;
+}
+
+const devicePath = () =>
+  `/clients/${encodeURIComponent(selectedClient)}/devices/${encodeURIComponent(selectedDevice)}`;
+
+function describeBase(base) {
+  const parts = [];
+  for (const [name, label] of Object.entries(LIMITS)) {
+    if (base[name] !== undefined) parts.push(`${label} ≤ ${base[name]} W`);
+  }
+  for (const [name, label] of Object.entries(SWITCHES)) {
+    if (base[name] !== undefined) parts.push(`${label} ${base[name]}`);
+  }
+  return parts.join(", ") || "nothing";
+}
+
+function formBase(form) {
+  const base = {};
+  for (const name of Object.keys(LIMITS)) {
+    if (form[name].value !== "") base[name] = Number(form[name].value);
+  }
+  for (const name of Object.keys(SWITCHES)) {
+    if (form[name].value !== "") base[name] = form[name].value === "true";
+  }
+  return base;
+}
+
+$("default-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("default-error").textContent = "";
+  try {
+    await api("PUT", `${devicePath()}/default-control`, {base: formBase($("default-form").elements)});
+    refresh();
+  } catch (error) { $("default-error").textContent = error.message; }
+});
+$("clear-default").addEventListener("click", () =>
+  api("DELETE", `${devicePath()}/default-control`).then(refresh, alert));
+
+$("control-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("control-error").textContent = "";
+  const form = $("control-form").elements;
+  const control = {
+    start_in_seconds: Number(form.start_in_seconds.value || 0),
+    duration_seconds: Number(form.duration_seconds.value || 0),
+    base: formBase(form),
+  };
+  if (form.randomize_start_seconds.value) control.randomize_start_seconds = Number(form.randomize_start_seconds.value);
+  if (form.description.value) control.description = form.description.value;
+  try {
+    await api("POST", `${devicePath()}/controls`, control);
+    refresh();
+  } catch (error) { $("control-error").textContent = error.message; }
+});
+
+$("device-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = $("device-form").elements;
+  const body = {};
+  if (form.pin.value !== "") body.pin = Number(form.pin.value);
+  if (form.primacy.value !== "") body.primacy = Number(form.primacy.value);
+  api("PATCH", devicePath(), body).then(refresh, alert);
+});
+$("forget").addEventListener("click", () => {
+  if (confirm("Forget this end device? The client will have to register it again.")) {
+    api("DELETE", devicePath()).then(() => { selectedDevice = null; refresh(); }, alert);
+  }
+});
+
+function renderClients(clients) {
+  $("no-clients").hidden = clients.length > 0;
+  $("clients").innerHTML = clients.map((c) => `
+    <li data-client="${esc(c.name)}" class="${c.name === selectedClient ? "selected" : ""}">
+      ${esc(c.name)}<br>
+      <span class="muted">${c.end_devices.length} end device${c.end_devices.length === 1 ? "" : "s"}
+        · seen ${esc(time(c.last_contact_at))}</span>
+    </li>`).join("");
+  for (const li of $("clients").children) {
+    li.addEventListener("click", () => { selectedClient = li.dataset.client; selectedDevice = null; refresh(); });
+  }
+}
+
+function renderDevices(devices) {
+  $("no-devices").hidden = devices.length > 0;
+  $("devices").innerHTML = devices.map((d) => `
+    <li data-device="${esc(d.id)}" class="${String(d.id) === String(selectedDevice) ? "selected" : ""}">
+      edev/${esc(d.id)} <span class="muted">sFDI ${esc(d.sfdi)}</span><br>
+      <span class="${d.active_controls ? "ok" : "muted"}">${d.active_controls} active</span>
+      <span class="muted">· ${d.scheduled_controls} scheduled</span>
+    </li>`).join("");
+  for (const li of $("devices").children) {
+    li.addEventListener("click", () => { selectedDevice = li.dataset.device; refresh(); });
+  }
+}
+
+function renderDevice(device) {
+  $("device-title").textContent = `End device ${device.id}`;
+  $("device-facts").innerHTML = `
+    <dt>lFDI</dt><dd><code>${esc(device.lfdi)}</code></dd>
+    <dt>sFDI</dt><dd>${esc(device.sfdi)}</dd>
+    <dt>Registered</dt><dd>${esc(stamp(device.registered_at))}</dd>
+    <dt>PIN</dt><dd>${esc(device.pin)}</dd>
+    <dt>Primacy</dt><dd>${esc(device.primacy)}</dd>
+    <dt>Connection point</dt><dd>${device.connection_point_id ? esc(device.connection_point_id) : '<span class="muted">not set</span>'}</dd>
+    <dt>Post rate</dt><dd>${device.post_rate ? `${esc(device.post_rate)}s` : '<span class="muted">not set</span>'}</dd>`;
+
+  const fallback = device.default_control;
+  $("default-now").innerHTML = fallback
+    ? `Version ${esc(fallback.version)}: ${esc(describeBase(fallback.base))}. <span class="muted">Changed ${esc(stamp(fallback.changed_at))}.</span>`
+    : `<span class="muted">None set; the program has no DefaultDERControl.</span>`;
+
+  $("controls").innerHTML = device.controls.slice().reverse().map((c) => `
+    <tr>
+      <td title="${esc(c.mrid)}">${esc(c.id)}</td>
+      <td class="${c.status === "active" ? "ok" : ""}">${esc(c.status)}</td>
+      <td>${esc(stamp(c.start))}${c.randomize_start_seconds ? ` <span class="muted">±${esc(c.randomize_start_seconds)}s</span>` : ""}</td>
+      <td>${esc(c.duration_seconds)}s</td>
+      <td class="wrap">${esc(describeBase(c.base))}${c.description ? `<br><span class="muted">${esc(c.description)}</span>` : ""}</td>
+      <td>${c.responses.length ? c.responses.map((r) => `${esc(r.status_name ?? r.status)} <span class="muted">${esc(time(r.at))}</span>`).join("<br>") : '<span class="muted">none yet</span>'}</td>
+      <td>${c.status === "scheduled" || c.status === "active" ? `<button class="danger" data-cancel="${esc(c.id)}">Cancel</button>` : ""}</td>
+    </tr>`).join("") || `<tr><td colspan="7" class="muted">No controls.</td></tr>`;
+  for (const button of document.querySelectorAll("[data-cancel]")) {
+    button.addEventListener("click", () =>
+      api("POST", `${devicePath()}/controls/${button.dataset.cancel}/cancel`).then(refresh, alert));
+  }
+
+  const names = {dercap: "DERCapability", derg: "DERSettings", ders: "DERStatus", dera: "DERAvailability"};
+  $("der").innerHTML = Object.entries(names).map(([key, name]) => {
+    const entry = device.der[key];
+    return `<div><h3>${name}</h3>${entry ? `<p class="muted">Written ${esc(time(entry.at))}</p>
+      <dl class="kv">${Object.entries(entry.data).filter(([k]) => k !== "href").map(([k, v]) =>
+        `<dt>${esc(k)}</dt><dd>${esc(typeof v === "object" ? JSON.stringify(v) : v)}</dd>`).join("")}</dl>`
+      : '<p class="muted">Not written.</p>'}</div>`;
+  }).join("");
+}
+
+function renderReadings(client) {
+  const rows = [];
+  for (const mup of client.mirror_usage_points) {
+    for (const reading of mup.meter_readings) {
+      const type = reading.reading_type ?? {};
+      const scale = type.powerOfTenMultiplier ? ` ×10^${type.powerOfTenMultiplier}` : "";
+      rows.push(`<tr><td>mup/${esc(mup.id)} <span class="muted">${esc(mup.description ?? "")}</span></td>
+        <td>${esc(reading.description ?? reading.mrid)}</td>
+        <td>${type.uom !== undefined ? `uom ${esc(type.uom)}${esc(scale)}` : ""}</td>
+        <td>${esc(reading.latest?.value ?? "")}</td>
+        <td>${esc(epochStamp(reading.latest?.start))}</td>
+        <td>${esc(time(reading.at))}</td></tr>`);
+    }
+  }
+  $("readings").innerHTML = rows.length ? `<table><thead><tr><th>Usage point</th><th>Reading</th>
+    <th>Type</th><th>Latest</th><th>For</th><th>Posted</th></tr></thead><tbody>${rows.join("")}</tbody></table>`
+    : `<p class="muted">No mirror usage points.</p>`;
+}
+
+function renderMessages(messages) {
+  $("messages").innerHTML = messages.slice(-80).reverse().map((m) => `
+    <tr><td>${esc(m.seq)}</td><td>${esc(time(m.at))}</td>
+      <td>${esc(m.method)} <code>${esc(m.path)}</code></td>
+      <td class="${m.status >= 400 ? "error" : ""}">${esc(m.status)}${m.error ? ` ${esc(m.error)}` : ""}</td>
+      <td>${esc(m.request_type ?? "")}</td>
+      <td>${esc(m.response_type ?? m.location ?? "")}</td></tr>`).join("");
+}
+
+async function refresh() {
+  try {
+    const server = await api("GET", "/server");
+    $("server").textContent = `· pollRate ${server.poll_rate_seconds}s · PIN ${server.pin} · ${server.time_zone}`;
+    $("dcap-url").textContent = `${location.origin}/d/<client name>/dcap`;
+    const clients = await api("GET", "/clients");
+    if (selectedClient && !clients.some((c) => c.name === selectedClient)) selectedClient = null;
+    if (!selectedClient && clients.length) selectedClient = clients[0].name;
+    renderClients(clients);
+    $("devices-section").hidden = !selectedClient;
+    $("messages-section").hidden = !selectedClient;
+    if (!selectedClient) { $("detail").hidden = true; return; }
+
+    const path = `/clients/${encodeURIComponent(selectedClient)}`;
+    const [client, messages] = await Promise.all([api("GET", path), api("GET", `${path}/messages`)]);
+    if (selectedDevice && !client.end_devices.some((d) => String(d.id) === String(selectedDevice))) selectedDevice = null;
+    if (!selectedDevice && client.end_devices.length) selectedDevice = client.end_devices[0].id;
+    renderDevices(client.end_devices);
+    renderMessages(messages);
+    $("detail").hidden = !selectedDevice;
+    if (selectedDevice) {
+      renderDevice(client.end_devices.find((d) => String(d.id) === String(selectedDevice)));
+      renderReadings(client);
+    }
+  } catch (error) {
+    $("server").innerHTML = `<span class="error">${esc(error.message)}</span>`;
+  }
+}
+
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

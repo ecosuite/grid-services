@@ -1,0 +1,10 @@
+<DERProgramList xmlns="urn:ieee:std:2030.5:ns" href="/edev/3/fsa/1/derp" subscribable="0" all="1" results="1" pollRate="300">
+  <DERProgram href="/derp/1" subscribable="0">
+    <mRID>B1000000000000000000000000000001</mRID>
+    <description>Site export limits</description>
+    <ActiveDERControlListLink href="/derp/1/actderc" all="1"/>
+    <DefaultDERControlLink href="/derp/1/dderc"/>
+    <DERControlListLink href="/derp/1/derc" all="2"/>
+    <primacy>2</primacy>
+  </DERProgram>
+</DERProgramList>
